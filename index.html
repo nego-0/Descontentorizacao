@@ -1,0 +1,1606 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Relatórios de Rastreio de Bagagens</title>
+  <style>
+    :root {
+      --navy: #0b1f36;
+      --navy-2: #123252;
+      --blue: #0b6ecf;
+      --blue-dark: #0757a5;
+      --sky: #eaf4ff;
+      --cyan: #2bb8c5;
+      --green: #168a63;
+      --green-soft: #e8f7f1;
+      --amber: #9a6100;
+      --amber-soft: #fff6df;
+      --red: #b42318;
+      --red-soft: #fff0ee;
+      --ink: #17212b;
+      --muted: #5e6b78;
+      --line: #d7e0e9;
+      --panel: #ffffff;
+      --page: #f3f6f9;
+      --shadow: 0 12px 30px rgba(15, 35, 55, .08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 85% 0%, rgba(43, 184, 197, .10), transparent 28rem),
+        var(--page);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [role="tab"]:focus-visible {
+      outline: 3px solid rgba(11, 110, 207, .28);
+      outline-offset: 2px;
+    }
+
+    .app-header {
+      color: #fff;
+      background: linear-gradient(125deg, var(--navy), var(--navy-2));
+      border-bottom: 4px solid var(--cyan);
+    }
+
+    .header-inner, main { width: min(1440px, calc(100% - 32px)); margin-inline: auto; }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 0; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-mark {
+      width: 48px; height: 48px; display: grid; place-items: center;
+      border-radius: 14px; background: rgba(255,255,255,.12); font-size: 25px;
+      border: 1px solid rgba(255,255,255,.16);
+    }
+    .brand h1 { margin: 0; font-size: clamp(1.2rem, 2vw, 1.7rem); letter-spacing: -.02em; }
+    .brand p { margin: 3px 0 0; color: #bfd0df; font-size: .9rem; }
+    .save-state { display: flex; align-items: center; gap: 8px; color: #d7e5f1; font-size: .86rem; white-space: nowrap; }
+    .save-dot { width: 9px; height: 9px; border-radius: 50%; background: #5fe2ad; box-shadow: 0 0 0 4px rgba(95,226,173,.12); }
+    .save-state.error .save-dot { background: #ff8177; box-shadow: 0 0 0 4px rgba(255,129,119,.14); }
+
+    .tabs-wrap { background: #fff; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
+    .tabs { width: min(1440px, calc(100% - 32px)); margin: auto; display: flex; gap: 4px; overflow-x: auto; padding-top: 4px; }
+    .tab {
+      border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted);
+      padding: 15px 18px 12px; font-weight: 700; white-space: nowrap;
+    }
+    .tab[aria-selected="true"] { color: var(--blue); border-bottom-color: var(--blue); }
+    .count-badge {
+      display: inline-grid; place-items: center; min-width: 24px; height: 22px; margin-left: 6px; padding: 0 7px;
+      border-radius: 999px; background: #e8eef4; color: #34495d; font-size: .72rem; font-weight: 850;
+    }
+    .tab[aria-selected="true"] .count-badge { background: var(--sky); color: var(--blue-dark); }
+
+    main { padding: 26px 0 48px; }
+    .tabpanel[hidden] { display: none; }
+    .report-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr); gap: 24px; align-items: start; }
+    .stack { display: grid; gap: 20px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .card-head { padding: 19px 22px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .card-head h2, .card-head h3 { margin: 0; letter-spacing: -.015em; }
+    .card-head h2 { font-size: 1.12rem; }
+    .card-head h3 { font-size: 1rem; }
+    .card-head p { margin: 5px 0 0; color: var(--muted); font-size: .88rem; }
+    .card-body { padding: 20px 22px 22px; }
+    .section-icon { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--sky); flex: 0 0 auto; }
+    .head-title { display: flex; align-items: flex-start; gap: 11px; }
+
+    .grid { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    label, .field-label { display: block; margin: 0 0 7px; font-size: .86rem; font-weight: 750; color: #334150; }
+    input, select, textarea {
+      width: 100%; border: 1px solid #bac7d4; border-radius: 10px; background: #fff; color: var(--ink);
+      padding: 11px 12px; min-height: 44px; transition: border-color .16s, box-shadow .16s;
+    }
+    input:hover, select:hover, textarea:hover { border-color: #91a3b5; }
+    input:focus, select:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(11,110,207,.10); outline: none; }
+    input:disabled { background: #eef2f5; color: #73808c; }
+    textarea { resize: vertical; min-height: 92px; }
+    .hint { color: var(--muted); font-size: .78rem; margin-top: 6px; }
+    .error-text { color: var(--red); font-size: .78rem; margin-top: 6px; min-height: 1.1em; }
+    [aria-invalid="true"] { border-color: var(--red) !important; }
+
+    .input-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+    .now-btn {
+      min-width: 70px; min-height: 44px; border: 1px solid #abc4dc; border-radius: 10px;
+      color: var(--blue-dark); background: var(--sky); font-size: .8rem; font-weight: 800;
+    }
+    .now-btn:hover { background: #dceeff; }
+    .autocomplete-field { position: relative; }
+    #flightNumber, #associationFlight { text-transform: uppercase; }
+    .autocomplete-list {
+      position: absolute; z-index: 60; top: calc(100% - 2px); left: 0; right: 0;
+      max-height: 250px; overflow-y: auto; border: 1px solid #aebfce; border-radius: 11px;
+      background: #fff; box-shadow: 0 14px 30px rgba(16, 38, 60, .16); padding: 5px;
+    }
+    .autocomplete-list[hidden] { display: none; }
+    .autocomplete-option {
+      width: 100%; min-height: 44px; border: 0; border-radius: 8px; background: transparent;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 9px 10px; color: var(--ink); text-align: left;
+    }
+    .autocomplete-option:hover, .autocomplete-option:focus { background: var(--sky); outline: none; }
+    .autocomplete-option strong { color: var(--navy-2); }
+    .autocomplete-option small { color: var(--muted); text-align: right; }
+    .autocomplete-empty { padding: 10px; color: var(--muted); font-size: .8rem; }
+
+    .segmented { display: inline-flex; padding: 4px; background: #e9eef3; border-radius: 11px; gap: 3px; }
+    .segmented label { margin: 0; position: relative; }
+    .segmented input { position: absolute; width: 1px; height: 1px; min-height: 0; left: 50%; top: 50%; opacity: 0; pointer-events: none; }
+    .segmented span { display: block; padding: 8px 12px; border-radius: 8px; font-size: .85rem; font-weight: 750; color: var(--muted); cursor: pointer; }
+    .segmented input:checked + span { color: var(--blue-dark); background: #fff; box-shadow: 0 2px 7px rgba(22,38,55,.10); }
+    .segmented input:focus-visible + span { outline: 3px solid rgba(11,110,207,.25); }
+
+    .counter-shell { background: linear-gradient(135deg, #edf7ff, #f1fbfa); border: 1px solid #bee0ef; border-radius: 14px; padding: 18px; }
+    .counter-row { display: grid; grid-template-columns: 54px minmax(90px, 150px) 54px; justify-content: center; gap: 10px; margin-top: 10px; }
+    .counter-btn { border: 0; border-radius: 12px; background: var(--blue); color: #fff; font-size: 1.7rem; font-weight: 500; min-height: 54px; }
+    .counter-btn:hover { background: var(--blue-dark); }
+    .counter-input { min-height: 54px; text-align: center; font-size: 1.35rem; font-weight: 800; }
+    .unit-counter-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .unit-counter .counter-row { grid-template-columns: 48px minmax(70px, 1fr) 48px; }
+    .unit-counter .counter-btn, .unit-counter .counter-input { min-height: 50px; }
+    .unit-counter .counter-input { min-width: 0; }
+
+    .mode-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .intervals { display: grid; gap: 10px; }
+    .interval-head, .interval-row { display: grid; grid-template-columns: 1fr 1fr 100px 42px; gap: 10px; align-items: start; }
+    .interval-row input { min-width: 0; }
+    .interval-head { color: var(--muted); font-size: .76rem; font-weight: 800; padding: 0 2px; }
+    .subtotal { min-height: 44px; display: grid; place-items: center; background: #f3f6f8; border: 1px solid var(--line); border-radius: 10px; font-variant-numeric: tabular-nums; font-weight: 800; }
+    .icon-btn { min-height: 44px; width: 42px; border: 1px solid #e2b8b4; border-radius: 10px; background: #fff; color: var(--red); font-size: 1.1rem; }
+    .icon-btn:hover { background: var(--red-soft); }
+    .interval-message { grid-column: 1 / -1; margin-top: -5px; color: var(--red); font-size: .76rem; }
+    .scan-total { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--navy); color: #fff; display: flex; justify-content: space-between; align-items: center; }
+    .scan-total strong { font-size: 1.35rem; }
+    .scan-total.incomplete { background: #704b08; }
+
+    .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .btn {
+      min-height: 43px; border: 1px solid transparent; border-radius: 10px; padding: 10px 15px;
+      font-weight: 800; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-secondary { background: #fff; border-color: #aebdca; color: #293847; }
+    .btn-secondary:hover { background: #f2f6f9; }
+    .btn-soft { background: var(--sky); color: var(--blue-dark); border-color: #c9e2fb; }
+    .btn-danger { background: #fff; color: var(--red); border-color: #e5bbb7; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .top-actions { margin-bottom: 20px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+    .preview-card { position: sticky; top: 78px; overflow: hidden; }
+    .preview-top { padding: 18px 20px; background: linear-gradient(135deg, var(--navy), var(--navy-2)); color: #fff; }
+    .preview-top h2 { margin: 0; font-size: 1.05rem; }
+    .preview-top p { margin: 4px 0 0; color: #bdd0df; font-size: .82rem; }
+    .preview-status { margin-top: 12px; display: inline-flex; gap: 7px; align-items: center; padding: 5px 9px; border-radius: 999px; background: rgba(255,255,255,.11); font-size: .75rem; font-weight: 750; }
+    .preview-status.invalid { background: rgba(255,183,77,.18); color: #ffd99d; }
+    #reportPreview { width: 100%; min-height: 520px; border: 0; border-radius: 0; padding: 22px; line-height: 1.72; background: #fbfcfd; font-family: "Cascadia Mono", Consolas, monospace; font-size: .88rem; resize: vertical; }
+    .preview-actions { padding: 16px 18px; border-top: 1px solid var(--line); background: #fff; }
+
+    .notice { display: none; margin-bottom: 18px; border-radius: 12px; padding: 13px 15px; border: 1px solid; font-size: .86rem; }
+    .notice.show { display: block; }
+    .notice.error { color: #7a2119; background: var(--red-soft); border-color: #efc2bd; }
+    .notice.success { color: #116047; background: var(--green-soft); border-color: #b8e4d4; }
+    .notice.warning { color: #76500d; background: var(--amber-soft); border-color: #ebd49a; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 100; max-width: 360px; color: #fff; background: #183149; padding: 13px 16px; border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,.2); transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s ease; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: #8b2d25; }
+
+    .page-intro { margin-bottom: 20px; }
+    .page-intro h2 { margin: 0; font-size: 1.35rem; }
+    .page-intro p { margin: 5px 0 0; color: var(--muted); }
+    .models-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+    .model-editor { min-height: 510px; font-family: "Cascadia Mono", Consolas, monospace; font-size: .84rem; line-height: 1.6; }
+    .variable-box { margin-top: 20px; padding: 16px; border-radius: 12px; background: #f4f7f9; border: 1px solid var(--line); }
+    .variable-box h4 { margin: 0 0 8px; font-size: .9rem; }
+    .variable-list { display: flex; flex-wrap: wrap; gap: 7px; }
+    .variable { border: 1px solid #c5d6e5; background: #fff; color: #23435f; border-radius: 7px; padding: 5px 7px; font: 700 .72rem "Cascadia Mono", Consolas, monospace; }
+    .template-warning { min-height: 22px; margin-top: 9px; color: var(--amber); font-size: .8rem; }
+
+    .association-layout { display: grid; grid-template-columns: minmax(260px, 380px) minmax(0, 1fr); gap: 22px; align-items: start; }
+    .association-form-card { position: sticky; top: 78px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 13px 14px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); background: #f4f7f9; font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
+    td { font-size: .9rem; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .flight-code { font-weight: 850; color: var(--navy-2); }
+    .row-actions { display: flex; gap: 7px; justify-content: flex-end; }
+    .small-btn { border: 1px solid #b9c6d2; background: #fff; border-radius: 8px; min-height: 34px; padding: 6px 10px; font-size: .78rem; font-weight: 750; }
+    .small-btn:hover { background: #f1f5f8; }
+    .small-btn.delete { color: var(--red); border-color: #e0b8b4; }
+    .empty { text-align: center; color: var(--muted); padding: 36px 18px; }
+    .history-toolbar { display: grid; grid-template-columns: minmax(230px, 1fr) auto; gap: 18px; align-items: end; }
+    .history-toolbar .btn-row { justify-content: flex-end; }
+    .history-check { width: 18px; height: 18px; min-height: 0; accent-color: var(--blue); }
+    .history-summary { min-width: 230px; }
+    .history-summary details { max-width: 620px; }
+    .history-summary summary { color: var(--blue-dark); font-weight: 750; cursor: pointer; }
+    .history-text {
+      margin: 10px 0 0; max-height: 290px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+      padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: #f7f9fb;
+      font: .78rem/1.55 "Cascadia Mono", Consolas, monospace;
+    }
+    .history-meta { color: var(--muted); font-size: .76rem; margin-top: 3px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 1020px) {
+      .report-layout { grid-template-columns: 1fr; }
+      .preview-card { position: static; }
+      #reportPreview { min-height: 430px; }
+      .models-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .header-inner, main, .tabs { width: min(100% - 20px, 1440px); }
+      .header-inner { padding: 18px 0; }
+      .save-state { display: none; }
+      main { padding-top: 18px; }
+      .grid-2, .grid-3, .grid-4, .association-layout { grid-template-columns: 1fr; }
+      .history-toolbar { grid-template-columns: 1fr; }
+      .history-toolbar .btn-row { justify-content: stretch; }
+      .unit-counter-grid { grid-template-columns: 1fr; }
+      .association-form-card { position: static; }
+      .card-head { padding: 17px 16px 0; }
+      .card-body { padding: 17px 16px 18px; }
+      .interval-head { display: none; }
+      .interval-row { grid-template-columns: 1fr 1fr 42px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+      .interval-row .subtotal { grid-column: 1 / 3; grid-row: 2; }
+      .interval-row .icon-btn { grid-column: 3; grid-row: 1; }
+      .interval-message { grid-column: 1 / -1; grid-row: 3; }
+      .model-editor { min-height: 420px; }
+      .btn { flex: 1 1 auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">✈</div>
+        <div>
+          <h1>Relatórios de Rastreio de Bagagens</h1>
+          <p>Operações de voo · aplicação offline</p>
+        </div>
+      </div>
+      <div id="saveState" class="save-state" role="status" aria-live="polite">
+        <span class="save-dot"></span><span>Dados guardados neste navegador</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs-wrap" aria-label="Secções principais">
+    <div class="tabs" role="tablist">
+      <button class="tab" id="tab-report" role="tab" aria-selected="true" aria-controls="panel-report" data-tab="report">Relatório</button>
+      <button class="tab" id="tab-history" role="tab" aria-selected="false" aria-controls="panel-history" data-tab="history" tabindex="-1">Histórico <span id="historyTabCount" class="count-badge" aria-label="0 relatórios guardados">0</span></button>
+      <button class="tab" id="tab-models" role="tab" aria-selected="false" aria-controls="panel-models" data-tab="models" tabindex="-1">Modelos de relatório</button>
+      <button class="tab" id="tab-flights" role="tab" aria-selected="false" aria-controls="panel-flights" data-tab="flights" tabindex="-1">Associações de voos</button>
+    </div>
+  </nav>
+
+  <main>
+    <div id="storageNotice" class="notice error" role="alert"></div>
+
+    <section id="panel-report" class="tabpanel" role="tabpanel" aria-labelledby="tab-report">
+      <div class="top-actions">
+        <div>
+          <h2 class="sr-only">Criar relatório</h2>
+        </div>
+        <div class="btn-row">
+          <button id="clearReportData" class="btn btn-soft" type="button">Limpar Dados</button>
+          <button id="newReport" class="btn btn-secondary" type="button">Novo relatório</button>
+        </div>
+      </div>
+
+      <div class="report-layout">
+        <form id="reportForm" class="stack" novalidate>
+          <section class="card" aria-labelledby="shiftHeading">
+            <div class="card-head">
+              <div class="head-title"><span class="section-icon" aria-hidden="true">◷</span><div><h2 id="shiftHeading">Identificação do turno</h2><p>Defina a data e a equipa. O período é aplicado automaticamente.</p></div></div>
+            </div>
+            <div class="card-body grid grid-3">
+              <div class="field">
+                <label for="shiftType">Tipo de turno</label>
+                <select id="shiftType" data-bind="shiftType">
+                  <option value="diurno">Diurno</option>
+                  <option value="noturno">Noturno</option>
+                </select>
+                <div class="hint">Definido automaticamente pela hora atual; pode ser alterado manualmente.</div>
+              </div>
+              <div class="field">
+                <label for="dateStart">Data</label>
+                <input id="dateStart" data-bind="dateStart" type="date">
+              </div>
+              <div class="field">
+                <label for="shiftId">Turno</label>
+                <input id="shiftId" data-bind="shiftId" type="text" maxlength="20" placeholder="Ex.: B" autocomplete="off">
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="flightHeading">
+            <div class="card-head">
+              <div class="head-title"><span class="section-icon" aria-hidden="true">✈</span><div><h2 id="flightHeading">Dados do voo</h2><p>Pesquise pelo número do voo ou pela proveniência.</p></div></div>
+            </div>
+            <div class="card-body grid grid-2">
+              <div class="field autocomplete-field">
+                <label for="flightNumber">Número do voo</label>
+                <input id="flightNumber" data-bind="flightNumber" type="text" placeholder="Ex.: DT-693" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="flightSuggestions" aria-expanded="false">
+                <div id="flightSuggestions" class="autocomplete-list" role="listbox" aria-label="Voos correspondentes" hidden></div>
+                <div id="flightMatchHint" class="hint" aria-live="polite"></div>
+              </div>
+              <div class="field autocomplete-field">
+                <label for="origin">Proveniência</label>
+                <input id="origin" data-bind="origin" type="text" placeholder="Ex.: Guangzhou" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="originSuggestions" aria-expanded="false">
+                <div id="originSuggestions" class="autocomplete-list" role="listbox" aria-label="Proveniências e voos correspondentes" hidden></div>
+              </div>
+              <div class="field">
+                <label for="arrivalTime">Hora de chegada/aterragem</label>
+                <div class="input-action"><input id="arrivalTime" data-bind="arrivalTime" type="time"><button class="now-btn" type="button" data-time-now="arrivalTime" aria-label="Definir hora de chegada como a hora atual">Agora</button></div>
+              </div>
+              <div class="field">
+                <label for="firstBagTime">Primeira bagagem à descontentorização</label>
+                <div class="input-action"><input id="firstBagTime" data-bind="firstBagTime" type="time"><button class="now-btn" type="button" data-time-now="firstBagTime" aria-label="Definir hora da primeira bagagem como a hora atual">Agora</button></div>
+              </div>
+              <div class="field">
+                <label for="trackingStart">Início do rastreio</label>
+                <div class="input-action"><input id="trackingStart" data-bind="trackingStart" type="time"><button class="now-btn" type="button" data-time-now="trackingStart" aria-label="Definir início do rastreio como a hora atual">Agora</button></div>
+              </div>
+              <div class="field">
+                <label for="trackingEnd">Fim do rastreio</label>
+                <div class="input-action"><input id="trackingEnd" data-bind="trackingEnd" type="time"><button class="now-btn" type="button" data-time-now="trackingEnd" aria-label="Definir fim do rastreio como a hora atual">Agora</button></div>
+              </div>
+              <div class="field full">
+                <label for="constraints">Constrangimentos</label>
+                <textarea id="constraints" data-bind="constraints" rows="3" placeholder="Registe os constrangimentos ou mantenha 0."></textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="selectedHeading">
+            <div class="card-head">
+              <div class="head-title"><span class="section-icon" aria-hidden="true">🧳</span><div><h2 id="selectedHeading">Bagagens selecionadas</h2><p>Atualize o contador durante o processamento do voo.</p></div></div>
+            </div>
+            <div class="card-body">
+              <div class="counter-shell">
+                <span class="field-label" style="text-align:center">Quantidade selecionada</span>
+                <div class="counter-row">
+                  <button id="selectedDown" class="counter-btn" type="button" data-counter-key="selectedBags" data-counter-delta="-1" aria-label="Diminuir bagagens selecionadas">−</button>
+                  <input id="selectedBags" class="counter-input" data-bind="selectedBags" type="number" min="0" step="1" inputmode="numeric" aria-label="Quantidade de bagagens selecionadas">
+                  <button id="selectedUp" class="counter-btn" type="button" data-counter-key="selectedBags" data-counter-delta="1" aria-label="Aumentar bagagens selecionadas">+</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="scannedHeading">
+            <div class="card-head">
+              <div class="head-title"><span class="section-icon" aria-hidden="true">⌁</span><div><h2 id="scannedHeading">Bagagens scaneadas</h2><p>Calcule por leituras de contador ou indique diretamente o total.</p></div></div>
+            </div>
+            <div class="card-body">
+              <div class="mode-line">
+                <span class="field-label" style="margin:0">Modo de cálculo</span>
+                <div class="segmented" role="radiogroup" aria-label="Modo de cálculo das bagagens scaneadas">
+                  <label><input type="radio" name="scanMode" value="intervals"><span>Por intervalos</span></label>
+                  <label><input type="radio" name="scanMode" value="direct"><span>Total direto</span></label>
+                </div>
+              </div>
+
+              <div id="intervalMode">
+                <div class="interval-head" aria-hidden="true"><span>Número inicial</span><span>Número final</span><span>Subtotal</span><span></span></div>
+                <div id="intervals" class="intervals"></div>
+                <button id="addInterval" class="btn btn-soft" type="button" style="margin-top:12px">＋ Adicionar intervalo</button>
+              </div>
+
+              <div id="directMode" hidden>
+                <div class="field">
+                  <label for="directTotal">Total de bagagens scaneadas</label>
+                  <input id="directTotal" data-bind="directTotal" type="number" min="0" step="1" inputmode="numeric">
+                  <div id="directTotalError" class="error-text"></div>
+                </div>
+              </div>
+
+              <div id="scanTotal" class="scan-total" role="status" aria-live="polite">
+                <span>Total calculado</span><strong id="scanTotalValue">0</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="unitsHeading">
+            <div class="card-head">
+              <div class="head-title"><span class="section-icon" aria-hidden="true">▦</span><div><h2 id="unitsHeading">Unidades operacionais</h2><p>Os valores aparecem com pelo menos dois dígitos no relatório.</p></div></div>
+            </div>
+            <div class="card-body unit-counter-grid">
+              <div class="counter-shell unit-counter">
+                <label class="field-label" for="pallets" style="text-align:center">Paletes</label>
+                <div class="counter-row">
+                  <button class="counter-btn" type="button" data-counter-key="pallets" data-counter-delta="-1" aria-label="Diminuir paletes">−</button>
+                  <input id="pallets" class="counter-input" data-bind="pallets" type="number" min="0" step="1" inputmode="numeric">
+                  <button class="counter-btn" type="button" data-counter-key="pallets" data-counter-delta="1" aria-label="Aumentar paletes">+</button>
+                </div>
+              </div>
+              <div class="counter-shell unit-counter">
+                <label class="field-label" for="containers" style="text-align:center">Contentores</label>
+                <div class="counter-row">
+                  <button class="counter-btn" type="button" data-counter-key="containers" data-counter-delta="-1" aria-label="Diminuir contentores">−</button>
+                  <input id="containers" class="counter-input" data-bind="containers" type="number" min="0" step="1" inputmode="numeric">
+                  <button class="counter-btn" type="button" data-counter-key="containers" data-counter-delta="1" aria-label="Aumentar contentores">+</button>
+                </div>
+              </div>
+              <div class="counter-shell unit-counter">
+                <label class="field-label" for="carts" style="text-align:center">Carrinhos</label>
+                <div class="counter-row">
+                  <button class="counter-btn" type="button" data-counter-key="carts" data-counter-delta="-1" aria-label="Diminuir carrinhos">−</button>
+                  <input id="carts" class="counter-input" data-bind="carts" type="number" min="0" step="1" inputmode="numeric">
+                  <button class="counter-btn" type="button" data-counter-key="carts" data-counter-delta="1" aria-label="Aumentar carrinhos">+</button>
+                </div>
+              </div>
+              <div class="counter-shell unit-counter">
+                <label class="field-label" for="transfers" style="text-align:center">Transferências</label>
+                <div class="counter-row">
+                  <button class="counter-btn" type="button" data-counter-key="transfers" data-counter-delta="-1" aria-label="Diminuir transferências">−</button>
+                  <input id="transfers" class="counter-input" data-bind="transfers" type="number" min="0" step="1" inputmode="numeric">
+                  <button class="counter-btn" type="button" data-counter-key="transfers" data-counter-delta="1" aria-label="Aumentar transferências">+</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </form>
+
+        <aside class="card preview-card" aria-labelledby="previewHeading">
+          <div class="preview-top">
+            <h2 id="previewHeading">Pré-visualização do relatório</h2>
+            <p>Texto simples, atualizado automaticamente.</p>
+            <div id="previewStatus" class="preview-status"><span aria-hidden="true">●</span><span>Pronto para exportar</span></div>
+          </div>
+          <textarea id="reportPreview" readonly aria-label="Texto final do relatório"></textarea>
+          <div id="reportWarning" class="notice warning" style="margin:0 18px 14px"></div>
+          <div class="preview-actions btn-row">
+            <button id="saveHistory" class="btn btn-soft" type="button">Guardar no histórico</button>
+            <button id="copyReport" class="btn btn-primary" type="button">Copiar relatório</button>
+            <button id="downloadReport" class="btn btn-secondary" type="button">Descarregar .txt</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="panel-history" class="tabpanel" role="tabpanel" aria-labelledby="tab-history" hidden>
+      <div class="page-intro"><h2>Relatórios anteriores</h2><p>Os relatórios guardados permanecem neste navegador e podem ser consultados, copiados ou eliminados.</p></div>
+      <div class="stack">
+        <section class="card" aria-labelledby="historyManagementHeading">
+          <div class="card-head"><div><h2 id="historyManagementHeading">Gestão do histórico</h2><p id="historyCountText">Nenhum relatório guardado.</p></div></div>
+          <div class="card-body history-toolbar">
+            <div class="field">
+              <label for="historyCutoff">Eliminar relatórios com data anterior a</label>
+              <input id="historyCutoff" type="date">
+              <div class="hint">A data sugerida corresponde a dois dias atrás.</div>
+            </div>
+            <div class="btn-row">
+              <button id="deleteBeforeHistory" class="btn btn-danger" type="button">Eliminar anteriores à data</button>
+              <button id="deleteSelectedHistory" class="btn btn-danger" type="button" disabled>Eliminar selecionados</button>
+              <button id="deleteAllHistory" class="btn btn-danger" type="button" disabled>Eliminar todos</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="historyListHeading">
+          <div class="card-head"><div><h2 id="historyListHeading">Relatórios guardados</h2><p>Ordenados do mais recente para o mais antigo.</p></div></div>
+          <div class="card-body" style="padding-inline:0">
+            <div class="table-wrap">
+              <table id="historyTable">
+                <thead><tr><th><input id="historySelectAll" class="history-check" type="checkbox" aria-label="Selecionar todos os relatórios"></th><th>Relatório</th><th>Data / turno</th><th>Guardado em</th><th><span class="sr-only">Ações</span></th></tr></thead>
+                <tbody id="historyRows"></tbody>
+              </table>
+            </div>
+            <div id="historyEmpty" class="empty">Nenhum relatório guardado.</div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="panel-models" class="tabpanel" role="tabpanel" aria-labelledby="tab-models" hidden>
+      <div class="page-intro"><h2>Modelos de relatório</h2><p>Personalize o texto de cada tipo de turno. As alterações só entram em vigor ao guardar.</p></div>
+      <div class="models-layout">
+        <section class="card">
+          <div class="card-head"><div class="head-title"><span class="section-icon" aria-hidden="true">☀</span><div><h2>Modelo Diurno</h2><p>Usado quando o tipo de turno é Diurno.</p></div></div></div>
+          <div class="card-body">
+            <label for="dayTemplate">Conteúdo do modelo</label>
+            <textarea id="dayTemplate" class="model-editor" spellcheck="false"></textarea>
+            <div id="dayTemplateWarning" class="template-warning" aria-live="polite"></div>
+            <div class="btn-row"><button class="btn btn-primary save-template" data-model="day" type="button">Guardar modelo</button><button class="btn btn-secondary reset-template" data-model="day" type="button">Restaurar modelo inicial</button></div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head"><div class="head-title"><span class="section-icon" aria-hidden="true">☾</span><div><h2>Modelo Noturno</h2><p>Usado quando o tipo de turno é Noturno.</p></div></div></div>
+          <div class="card-body">
+            <label for="nightTemplate">Conteúdo do modelo</label>
+            <textarea id="nightTemplate" class="model-editor" spellcheck="false"></textarea>
+            <div id="nightTemplateWarning" class="template-warning" aria-live="polite"></div>
+            <div class="btn-row"><button class="btn btn-primary save-template" data-model="night" type="button">Guardar modelo</button><button class="btn btn-secondary reset-template" data-model="night" type="button">Restaurar modelo inicial</button></div>
+          </div>
+        </section>
+      </div>
+      <section class="variable-box" aria-labelledby="variablesHeading">
+        <h4 id="variablesHeading">Variáveis disponíveis</h4>
+        <p class="hint">Insira qualquer variável no modelo. Os horários do período são preenchidos automaticamente conforme o tipo de turno. Todas as ocorrências reconhecidas serão substituídas; variáveis desconhecidas permanecem visíveis.</p>
+        <div id="variableList" class="variable-list"></div>
+      </section>
+    </section>
+
+    <section id="panel-flights" class="tabpanel" role="tabpanel" aria-labelledby="tab-flights" hidden>
+      <div class="page-intro"><h2>Associações de voos</h2><p>Relacione números de voo com proveniências para preencher o formulário automaticamente.</p></div>
+      <div class="association-layout">
+        <section class="card association-form-card" aria-labelledby="associationFormHeading">
+          <div class="card-head"><div class="head-title"><span class="section-icon" aria-hidden="true">＋</span><div><h2 id="associationFormHeading">Nova associação</h2><p id="associationFormHelp">Adicione um voo à lista.</p></div></div></div>
+          <form id="associationForm" class="card-body" novalidate>
+            <div class="field"><label for="associationFlight">Número do voo</label><input id="associationFlight" type="text" required placeholder="Ex.: DT-693" autocomplete="off"><div id="associationFlightError" class="error-text"></div></div>
+            <div class="field" style="margin-top:12px"><label for="associationOrigin">Proveniência</label><input id="associationOrigin" type="text" required placeholder="Ex.: Guangzhou" autocomplete="off"><div id="associationOriginError" class="error-text"></div></div>
+            <div class="btn-row" style="margin-top:10px"><button id="saveAssociation" class="btn btn-primary" type="submit">Adicionar associação</button><button id="cancelAssociation" class="btn btn-secondary" type="button" hidden>Cancelar</button></div>
+          </form>
+        </section>
+        <section class="card" aria-labelledby="associationListHeading">
+          <div class="card-head"><div><h2 id="associationListHeading">Voos configurados</h2><p>Entradas equivalentes como DT-693, dt693 e DT 693 usam a mesma associação.</p></div></div>
+          <div class="card-body" style="padding-inline:0">
+            <div class="table-wrap">
+              <table id="associationTable">
+                <thead><tr><th>Número do voo</th><th>Proveniência</th><th><span class="sr-only">Ações</span></th></tr></thead>
+                <tbody id="associationRows"></tbody>
+              </table>
+            </div>
+            <div id="associationEmpty" class="empty" hidden>Nenhuma associação configurada.</div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    'use strict';
+
+    const STORAGE = {
+      report: 'bagagemRelatorio.v1.report',
+      templates: 'bagagemRelatorio.v1.templates',
+      flights: 'bagagemRelatorio.v1.flights',
+      history: 'bagagemRelatorio.v1.history'
+    };
+
+    const DEFAULT_TEMPLATE = `Data: {{data_inicial}} a {{data_final}}
+Período- {{hora_inicial_periodo}} às {{hora_final_periodo}}
+Turno: {{turno}}
+
+✈️ N do voo: {{numero_voo}}
+Proveniência: {{proveniencia}}
+
+⏱️Hora de chegada/aterragem: {{hora_aterragem}}
+
+⏱️Hora da chegada da primeira bagagem a descontentorização: {{hora_primeira_bagagem}}
+
+⏱️Hora de início rastreio: {{hora_inicio_rastreio}}
+
+⏱️Hora do fim do rastreio: {{hora_fim_rastreio}}
+
+⚙️Constrangimentos: {{constrangimentos}}
+
+🧳 Bagagens Selecionadas: {{bagagens_selecionadas}}
+
+🧳 Bagagens Scaneadas: {{bagagens_scaneadas}}
+
+Paletes: {{paletes}}
+Contentores: {{contentores}}
+Carrinhos: {{carrinhos}}
+Transferências: {{transferencias}}`;
+
+    const DEFAULT_DAY_TEMPLATE = DEFAULT_TEMPLATE.replace(
+      'Data: {{data_inicial}} a {{data_final}}',
+      'Data: {{data_inicial}}'
+    );
+
+    const VARIABLES = [
+      'data_inicial', 'data_final', 'hora_inicial_periodo', 'hora_final_periodo', 'turno', 'tipo_turno',
+      'numero_voo', 'proveniencia', 'hora_aterragem', 'hora_primeira_bagagem', 'hora_inicio_rastreio',
+      'hora_fim_rastreio', 'constrangimentos', 'bagagens_selecionadas', 'bagagens_scaneadas',
+      'paletes', 'contentores', 'carrinhos', 'transferencias'
+    ];
+
+    const DEFAULT_FLIGHTS = [
+      { id: 'f1', number: '4Z-44', origin: 'Joanesburgo' },
+      { id: 'f2', number: 'AF-930', origin: 'Paris' },
+      { id: 'f3', number: 'AF-972', origin: 'Paris' },
+      { id: 'f4', number: 'AH-5360', origin: 'Argel' },
+      { id: 'f5', number: 'AT-291', origin: 'Casablanca' },
+      { id: 'f22', number: 'DT-511', origin: 'São Tomé' },
+      { id: 'f23', number: 'DT-544', origin: 'Brazzaville' },
+      { id: 'f24', number: 'DT-565', origin: 'Lagos' },
+      { id: 'f25', number: 'DT-574', origin: 'Windhoek' },
+      { id: 'f26', number: 'DT-576', origin: 'Joanesburgo' },
+      { id: 'f27', number: 'DT-578', origin: 'Joanesburgo' },
+      { id: 'f29', number: 'DT-580', origin: 'Cidade do Cabo' },
+      { id: 'f30', number: 'DT-582', origin: 'Maputo' },
+      { id: 'f31', number: 'DT-584', origin: 'Cidade do Cabo' },
+      { id: 'f32', number: 'DT-591', origin: 'Nairobi' },
+      { id: 'f33', number: 'DT-651', origin: 'Lisboa' },
+      { id: 'f34', number: 'DT-653', origin: 'Lisboa' },
+      { id: 'f36', number: 'DT-693', origin: 'Guangzhou' },
+      { id: 'f37', number: 'DT-748', origin: 'São Paulo' },
+      { id: 'f38', number: 'DT-7550', origin: 'Acra' },
+      { id: 'f39', number: 'EK-793', origin: 'Dubai' },
+      { id: 'f40', number: 'ET-851', origin: 'Addis Abeba' },
+      { id: 'f41', number: 'KP-76', origin: 'Lomé' },
+      { id: 'f42', number: 'KP-77', origin: 'Pointa-Negra' },
+      { id: 'f43', number: 'QR-1491', origin: 'Kinshasa' },
+      { id: 'f44', number: 'TP-297', origin: 'Lisboa' }
+    ];
+
+    const makeDefaultReport = () => {
+      const automatic = automaticShiftDefaults();
+      return {
+        shiftType: automatic.shiftType, dateStart: automatic.dateStart, dateEnd: automatic.dateEnd,
+        periodStart: automatic.periodStart, periodEnd: automatic.periodEnd, manualShift: false, historyId: '', shiftId: '',
+        flightNumber: '', origin: '', lastFlightKey: '', arrivalTime: '', firstBagTime: '', trackingStart: '', trackingEnd: '',
+        constraints: '0', selectedBags: 0, scanMode: 'intervals', directTotal: 0,
+        intervals: [{ id: makeId(), start: '0', end: '0' }], pallets: 0, containers: 0, carts: 0, transfers: 0
+      };
+    };
+
+    let report = loadJSON(STORAGE.report, makeDefaultReport());
+    report = sanitizeReport(report);
+    let templates = loadJSON(STORAGE.templates, { day: DEFAULT_DAY_TEMPLATE, night: DEFAULT_TEMPLATE });
+    templates = {
+      day: typeof templates.day === 'string' ? templates.day : DEFAULT_DAY_TEMPLATE,
+      night: typeof templates.night === 'string' ? templates.night : DEFAULT_TEMPLATE
+    };
+    let flights = loadJSON(STORAGE.flights, DEFAULT_FLIGHTS);
+    flights = sanitizeFlights(flights);
+    let reportHistory = sanitizeHistory(loadJSON(STORAGE.history, []));
+    const selectedHistoryIds = new Set();
+    let editingFlightId = null;
+    let toastTimer;
+    let storageHealthy = true;
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+    function makeId() {
+      return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+    }
+
+    function loadJSON(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw === null) return structuredCloneSafe(fallback);
+        return JSON.parse(raw);
+      } catch (error) {
+        setTimeout(() => showStorageError('Alguns dados guardados não puderam ser lidos. Foram usados valores seguros.'), 0);
+        return structuredCloneSafe(fallback);
+      }
+    }
+
+    function structuredCloneSafe(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function saveJSON(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        storageHealthy = true;
+        updateSaveState();
+        return true;
+      } catch (error) {
+        storageHealthy = false;
+        updateSaveState();
+        showStorageError('Não foi possível guardar os dados neste navegador. Pode continuar, mas as alterações podem perder-se ao fechar a página.');
+        return false;
+      }
+    }
+
+    function showStorageError(message) {
+      const notice = $('#storageNotice');
+      if (!notice) return;
+      notice.textContent = message;
+      notice.classList.add('show');
+    }
+
+    function updateSaveState() {
+      const status = $('#saveState');
+      if (!status) return;
+      status.classList.toggle('error', !storageHealthy);
+      status.querySelector('span:last-child').textContent = storageHealthy ? 'Dados guardados neste navegador' : 'Não foi possível guardar';
+    }
+
+    function sanitizeNonNegative(value, fallback = 0) {
+      const number = Number(value);
+      return Number.isInteger(number) && number >= 0 ? number : fallback;
+    }
+
+    function sanitizeReport(value) {
+      const base = makeDefaultReport();
+      if (!value || typeof value !== 'object') return base;
+      const merged = { ...base, ...value };
+      merged.shiftType = merged.shiftType === 'noturno' ? 'noturno' : 'diurno';
+      merged.manualShift = merged.manualShift === true;
+      merged.historyId = typeof merged.historyId === 'string' ? merged.historyId : '';
+      merged.scanMode = merged.scanMode === 'direct' ? 'direct' : 'intervals';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(merged.dateStart || ''))) merged.dateStart = todayISO();
+      merged.dateEnd = merged.shiftType === 'noturno' ? addDaysISO(merged.dateStart, 1) : merged.dateStart;
+      merged.periodStart = merged.shiftType === 'noturno' ? '19:00' : '09:00';
+      merged.periodEnd = merged.shiftType === 'noturno' ? '09:00' : '19:00';
+      ['selectedBags', 'directTotal', 'pallets', 'containers', 'carts', 'transfers'].forEach(key => {
+        merged[key] = sanitizeNonNegative(merged[key], 0);
+      });
+      merged.constraints = typeof merged.constraints === 'string' ? merged.constraints : '0';
+      merged.intervals = Array.isArray(merged.intervals) && merged.intervals.length
+        ? merged.intervals.map(row => ({ id: typeof row.id === 'string' ? row.id : makeId(), start: valueOrBlank(row.start), end: valueOrBlank(row.end) }))
+        : [{ id: makeId(), start: '0', end: '0' }];
+      return merged;
+    }
+
+    function sanitizeHistory(value) {
+      if (!Array.isArray(value)) return [];
+      const seen = new Set();
+      return value.filter(item => item && typeof item === 'object')
+        .map(item => ({
+          id: typeof item.id === 'string' && item.id ? item.id : makeId(),
+          reportDate: /^\d{4}-\d{2}-\d{2}$/.test(String(item.reportDate || '')) ? item.reportDate : '',
+          shiftType: item.shiftType === 'noturno' ? 'noturno' : 'diurno',
+          shiftId: typeof item.shiftId === 'string' ? item.shiftId : '',
+          flightNumber: typeof item.flightNumber === 'string' ? item.flightNumber.toUpperCase() : '',
+          origin: typeof item.origin === 'string' ? item.origin : '',
+          text: typeof item.text === 'string' ? item.text : '',
+          createdAt: validISODateTime(item.createdAt) ? item.createdAt : new Date().toISOString(),
+          updatedAt: validISODateTime(item.updatedAt) ? item.updatedAt : (validISODateTime(item.createdAt) ? item.createdAt : new Date().toISOString())
+        }))
+        .filter(item => item.reportDate && item.text && !seen.has(item.id) && seen.add(item.id));
+    }
+
+    function validISODateTime(value) {
+      return typeof value === 'string' && !Number.isNaN(Date.parse(value));
+    }
+
+    function valueOrBlank(value) {
+      return value === '' || value === null || value === undefined ? '' : String(value);
+    }
+
+    function sanitizeFlights(value) {
+      if (!Array.isArray(value)) return structuredCloneSafe(DEFAULT_FLIGHTS);
+      const seen = new Set();
+      return value.filter(item => item && typeof item.number === 'string' && typeof item.origin === 'string')
+        .map(item => ({ id: typeof item.id === 'string' ? item.id : makeId(), number: item.number.trim().toUpperCase(), origin: item.origin.trim() }))
+        .filter(item => {
+          const key = normalizeFlight(item.number);
+          if (!key || !item.origin || seen.has(key)) return false;
+          seen.add(key); return true;
+        });
+    }
+
+    function normalizeFlight(value) {
+      return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    }
+
+    function normalizeText(value) {
+      return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt').trim();
+    }
+
+    function enforceDayDateRule(template) {
+      return String(template || '').replace(
+        /Data:\s*{{\s*data_inicial\s*}}\s+a\s+{{\s*data_final\s*}}/gi,
+        'Data: {{data_inicial}}'
+      );
+    }
+
+    function addDaysISO(value, days) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return '';
+      const [year, month, day] = value.split('-').map(Number);
+      const date = new Date(Date.UTC(year, month - 1, day));
+      date.setUTCDate(date.getUTCDate() + days);
+      return date.toISOString().slice(0, 10);
+    }
+
+    function localDateISO(date = new Date()) {
+      return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    }
+
+    function todayISO() {
+      return localDateISO(new Date());
+    }
+
+    function automaticShiftDefaults(now = new Date()) {
+      const hour = now.getHours();
+      const isNight = hour >= 19 || hour < 9;
+      const today = localDateISO(now);
+      const dateStart = isNight && hour < 9 ? addDaysISO(today, -1) : today;
+      return {
+        shiftType: isNight ? 'noturno' : 'diurno',
+        dateStart,
+        dateEnd: isNight ? addDaysISO(dateStart, 1) : dateStart,
+        periodStart: isNight ? '19:00' : '09:00',
+        periodEnd: isNight ? '09:00' : '19:00'
+      };
+    }
+
+    function parseIntegerInput(value) {
+      if (String(value).trim() === '') return { valid: false, empty: true, value: null };
+      const number = Number(value);
+      return { valid: Number.isInteger(number) && number >= 0, empty: false, value: number };
+    }
+
+    function init() {
+      if (!report.manualShift) Object.assign(report, automaticShiftDefaults());
+      bindTabs();
+      bindReport();
+      bindTemplates();
+      bindAssociations();
+      bindHistory();
+      populateReportForm();
+      renderIntervals();
+      renderTemplates();
+      renderVariables();
+      renderAssociations();
+      renderHistory();
+      updateShiftUI(false);
+      updateScanModeUI();
+      saveReport();
+      updateAll();
+    }
+
+    function bindTabs() {
+      $$('.tab').forEach(tab => {
+        tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+        tab.addEventListener('keydown', event => {
+          if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+          event.preventDefault();
+          const tabs = $$('.tab');
+          const current = tabs.indexOf(tab);
+          const offset = event.key === 'ArrowRight' ? 1 : -1;
+          const next = tabs[(current + offset + tabs.length) % tabs.length];
+          activateTab(next.dataset.tab); next.focus();
+        });
+      });
+    }
+
+    function activateTab(name) {
+      $$('.tab').forEach(tab => {
+        const active = tab.dataset.tab === name;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+      });
+      $$('.tabpanel').forEach(panel => { panel.hidden = panel.id !== 'panel-' + name; });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function bindReport() {
+      $$('[data-bind]').forEach(input => {
+        const eventName = input.tagName === 'SELECT' ? 'change' : 'input';
+        input.addEventListener(eventName, () => handleBoundInput(input));
+      });
+      $$('input[name="scanMode"]').forEach(input => input.addEventListener('change', () => {
+        report.scanMode = input.value;
+        updateScanModeUI(); saveReport(); updateAll();
+      }));
+      $$('[data-counter-key]').forEach(button => button.addEventListener('click', () => {
+        changeCounter(button.dataset.counterKey, Number(button.dataset.counterDelta));
+      }));
+      $('#addInterval').addEventListener('click', addInterval);
+      $('#saveHistory').addEventListener('click', saveCurrentToHistory);
+      $('#copyReport').addEventListener('click', copyReport);
+      $('#downloadReport').addEventListener('click', downloadReport);
+      $('#newReport').addEventListener('click', newReport);
+      $('#clearReportData').addEventListener('click', clearReportData);
+      $$('[data-time-now]').forEach(button => button.addEventListener('click', () => setCurrentTime(button.dataset.timeNow)));
+      bindAutocomplete($('#flightNumber'), 'flight');
+      bindAutocomplete($('#origin'), 'origin');
+      document.addEventListener('click', event => {
+        if (!event.target.closest('.autocomplete-field')) hideSuggestions();
+      });
+    }
+
+    function handleBoundInput(input) {
+      const key = input.dataset.bind;
+      const numberKeys = ['selectedBags', 'directTotal', 'pallets', 'containers', 'carts', 'transfers'];
+      if (numberKeys.includes(key)) {
+        const parsed = parseIntegerInput(input.value);
+        if (parsed.valid) report[key] = parsed.value;
+        else if (parsed.empty) report[key] = '';
+        else {
+          input.value = sanitizeNonNegative(report[key], 0);
+          showToast('Introduza um número inteiro igual ou superior a zero.', true);
+          return;
+        }
+      } else {
+        report[key] = input.value;
+      }
+
+      if (key === 'shiftType') { report.manualShift = true; updateShiftUI(true); }
+      if (key === 'dateStart') { report.manualShift = true; updateShiftUI(false); }
+      if (key === 'flightNumber') {
+        report.flightNumber = report.flightNumber.toUpperCase();
+        input.value = report.flightNumber;
+        resolveFlight();
+        showFlightSuggestions(report.flightNumber);
+      }
+      if (key === 'origin') {
+        resolveOrigin();
+        showOriginSuggestions(report.origin);
+      }
+      saveReport(); updateAll();
+    }
+
+    function populateReportForm() {
+      $$('[data-bind]').forEach(input => {
+        const value = report[input.dataset.bind];
+        input.value = value === undefined || value === null ? '' : value;
+      });
+      $$('input[name="scanMode"]').forEach(input => { input.checked = input.value === report.scanMode; });
+    }
+
+    function updateShiftUI() {
+      const isDay = report.shiftType === 'diurno';
+      report.dateEnd = report.dateStart ? (isDay ? report.dateStart : addDaysISO(report.dateStart, 1)) : '';
+      report.periodStart = isDay ? '09:00' : '19:00';
+      report.periodEnd = isDay ? '19:00' : '09:00';
+    }
+
+    function resolveFlight() {
+      const key = normalizeFlight(report.flightNumber);
+      if (key !== report.lastFlightKey) {
+        const match = flights.find(item => normalizeFlight(item.number) === key);
+        report.origin = match ? match.origin : '';
+        report.lastFlightKey = key;
+        $('#origin').value = report.origin;
+      }
+    }
+
+    function resolveOrigin() {
+      const key = normalizeText(report.origin);
+      const current = flights.find(item => normalizeFlight(item.number) === normalizeFlight(report.flightNumber));
+      if (current && normalizeText(current.origin) !== key) {
+        report.flightNumber = '';
+        report.lastFlightKey = '';
+        $('#flightNumber').value = '';
+      }
+      if (!key) return;
+      const exact = flights.filter(item => normalizeText(item.origin) === key);
+      if (exact.length === 1) {
+        report.flightNumber = exact[0].number.toUpperCase();
+        report.lastFlightKey = normalizeFlight(exact[0].number);
+        $('#flightNumber').value = report.flightNumber;
+      }
+    }
+
+    function bindAutocomplete(input, type) {
+      const show = () => type === 'flight' ? showFlightSuggestions(input.value) : showOriginSuggestions(input.value);
+      input.addEventListener('focus', show);
+      input.addEventListener('keydown', event => {
+        const list = type === 'flight' ? $('#flightSuggestions') : $('#originSuggestions');
+        if (event.key === 'Escape') { hideSuggestions(); return; }
+        if (event.key === 'ArrowDown' && !list.hidden) {
+          const first = $('.autocomplete-option', list);
+          if (first) { event.preventDefault(); first.focus(); }
+        }
+      });
+    }
+
+    function showFlightSuggestions(query) {
+      const key = normalizeFlight(query);
+      const matches = key ? flights.filter(item => normalizeFlight(item.number).includes(key)) : [];
+      renderSuggestions($('#flightSuggestions'), $('#flightNumber'), matches, 'flight');
+    }
+
+    function showOriginSuggestions(query) {
+      const key = normalizeText(query);
+      const matches = key ? flights.filter(item => normalizeText(item.origin).includes(key)) : [];
+      renderSuggestions($('#originSuggestions'), $('#origin'), matches, 'origin');
+    }
+
+    function renderSuggestions(list, input, matches, type) {
+      list.textContent = '';
+      if (!matches.length) {
+        list.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      matches.slice(0, 12).forEach(item => {
+        const option = document.createElement('button');
+        option.type = 'button'; option.className = 'autocomplete-option'; option.setAttribute('role', 'option');
+        const main = document.createElement('strong');
+        const secondary = document.createElement('small');
+        if (type === 'flight') { main.textContent = item.number.toUpperCase(); secondary.textContent = item.origin; }
+        else { main.textContent = item.origin; secondary.textContent = item.number.toUpperCase(); }
+        option.append(main, secondary);
+        option.addEventListener('mousedown', event => event.preventDefault());
+        option.addEventListener('click', () => selectAssociation(item));
+        option.addEventListener('keydown', event => {
+          if (event.key === 'Escape') { hideSuggestions(); input.focus(); }
+          if (event.key === 'ArrowDown') { event.preventDefault(); option.nextElementSibling?.focus(); }
+          if (event.key === 'ArrowUp') { event.preventDefault(); (option.previousElementSibling || input).focus(); }
+        });
+        list.append(option);
+      });
+      list.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+    }
+
+    function selectAssociation(item) {
+      report.flightNumber = item.number.toUpperCase();
+      report.origin = item.origin;
+      report.lastFlightKey = normalizeFlight(item.number);
+      $('#flightNumber').value = report.flightNumber;
+      $('#origin').value = report.origin;
+      hideSuggestions(); saveReport(); updateAll();
+    }
+
+    function hideSuggestions() {
+      ['flight', 'origin'].forEach(name => {
+        $('#' + name + 'Suggestions').hidden = true;
+        $('#' + (name === 'flight' ? 'flightNumber' : 'origin')).setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    function setCurrentTime(targetId) {
+      const now = new Date();
+      const value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      const input = $('#' + targetId);
+      if (!input || !input.dataset.bind) return;
+      input.value = value;
+      report[input.dataset.bind] = value;
+      saveReport(); updateAll();
+      showToast('Hora atual definida: ' + value + '.');
+    }
+
+    function changeCounter(key, delta) {
+      if (!['selectedBags', 'pallets', 'containers', 'carts', 'transfers'].includes(key) || !Number.isInteger(delta)) return;
+      report[key] = Math.max(0, sanitizeNonNegative(report[key], 0) + delta);
+      $('#' + key).value = report[key];
+      saveReport(); updateAll();
+    }
+
+    function updateScanModeUI() {
+      const byIntervals = report.scanMode === 'intervals';
+      $('#intervalMode').hidden = !byIntervals;
+      $('#directMode').hidden = byIntervals;
+      $$('input[name="scanMode"]').forEach(input => { input.checked = input.value === report.scanMode; });
+    }
+
+    function addInterval() {
+      report.intervals.push({ id: makeId(), start: '', end: '' });
+      renderIntervals(); saveReport(); updateAll();
+      const rows = $$('.interval-row');
+      rows[rows.length - 1]?.querySelector('input')?.focus();
+    }
+
+    function removeInterval(id) {
+      if (report.intervals.length === 1) {
+        report.intervals[0] = { id: report.intervals[0].id, start: '0', end: '0' };
+      } else {
+        report.intervals = report.intervals.filter(row => row.id !== id);
+      }
+      renderIntervals(); saveReport(); updateAll();
+    }
+
+    function renderIntervals() {
+      const container = $('#intervals');
+      container.textContent = '';
+      report.intervals.forEach((row, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'interval-row';
+        wrapper.dataset.id = row.id;
+
+        const start = document.createElement('input');
+        start.type = 'number'; start.min = '0'; start.step = '1'; start.inputMode = 'numeric';
+        start.value = row.start; start.setAttribute('aria-label', `Número inicial do intervalo ${index + 1}`);
+        const end = document.createElement('input');
+        end.type = 'number'; end.min = '0'; end.step = '1'; end.inputMode = 'numeric';
+        end.value = row.end; end.setAttribute('aria-label', `Número final do intervalo ${index + 1}`);
+        const subtotal = document.createElement('div'); subtotal.className = 'subtotal'; subtotal.setAttribute('aria-label', `Subtotal do intervalo ${index + 1}`);
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'icon-btn'; remove.innerHTML = '<span aria-hidden="true">×</span><span class="sr-only">Remover intervalo ' + (index + 1) + '</span>';
+        const message = document.createElement('div'); message.className = 'interval-message'; message.setAttribute('aria-live', 'polite');
+
+        start.addEventListener('input', () => updateInterval(row.id, 'start', start.value));
+        end.addEventListener('input', () => updateInterval(row.id, 'end', end.value));
+        remove.addEventListener('click', () => removeInterval(row.id));
+        wrapper.append(start, end, subtotal, remove, message);
+        container.append(wrapper);
+      });
+      refreshIntervalFeedback();
+    }
+
+    function updateInterval(id, key, value) {
+      const row = report.intervals.find(item => item.id === id);
+      if (!row) return;
+      row[key] = value;
+      saveReport(); refreshIntervalFeedback(); updateAll();
+    }
+
+    function calculateIntervals() {
+      let total = 0;
+      let valid = true;
+      const details = report.intervals.map(row => {
+        const start = parseIntegerInput(row.start);
+        const end = parseIntegerInput(row.end);
+        let message = '';
+        let subtotal = null;
+        if (start.empty || end.empty) message = 'Preencha os dois números deste intervalo.';
+        else if (!start.valid || !end.valid) message = 'Use apenas números inteiros iguais ou superiores a zero.';
+        else if (end.value < start.value) message = 'O número final deve ser igual ou superior ao inicial.';
+        else { subtotal = end.value - start.value; total += subtotal; }
+        if (message) valid = false;
+        return { id: row.id, valid: !message, subtotal, message };
+      });
+      return { total, valid, details };
+    }
+
+    function refreshIntervalFeedback() {
+      const result = calculateIntervals();
+      result.details.forEach(detail => {
+        const row = $(`.interval-row[data-id="${CSS.escape(detail.id)}"]`);
+        if (!row) return;
+        const inputs = $$('input', row);
+        inputs.forEach(input => input.setAttribute('aria-invalid', String(!detail.valid)));
+        $('.subtotal', row).textContent = detail.valid ? String(detail.subtotal) : '—';
+        $('.interval-message', row).textContent = detail.message;
+      });
+    }
+
+    function scanResult() {
+      if (report.scanMode === 'intervals') return calculateIntervals();
+      const parsed = parseIntegerInput(report.directTotal);
+      return { total: parsed.valid ? parsed.value : 0, valid: parsed.valid, details: [] };
+    }
+
+    function updateAll() {
+      const scan = scanResult();
+      const currentFlight = flights.find(item => normalizeFlight(item.number) === normalizeFlight(report.flightNumber));
+      $('#flightMatchHint').textContent = report.flightNumber
+        ? (currentFlight ? `Associação encontrada: ${currentFlight.origin}` : 'Voo sem associação; a proveniência pode ser preenchida manualmente.')
+        : '';
+      $('#directTotal').setAttribute('aria-invalid', String(report.scanMode === 'direct' && !scan.valid));
+      $('#directTotalError').textContent = report.scanMode === 'direct' && !scan.valid ? 'Introduza um número inteiro igual ou superior a zero.' : '';
+      $('#scanTotalValue').textContent = scan.valid ? String(scan.total) : 'Incompleto';
+      $('#scanTotal').classList.toggle('incomplete', !scan.valid);
+      $('#scanTotal').querySelector('span').textContent = scan.valid ? (report.scanMode === 'intervals' ? 'Total calculado' : 'Total indicado') : 'Cálculo incompleto';
+
+      const output = generateReport(scan.total);
+      $('#reportPreview').value = output.text;
+      const exportable = scan.valid;
+      const historyReady = exportable && /^\d{4}-\d{2}-\d{2}$/.test(String(report.dateStart || ''));
+      $('#saveHistory').disabled = !historyReady;
+      $('#saveHistory').textContent = report.historyId && reportHistory.some(item => item.id === report.historyId) ? 'Atualizar no histórico' : 'Guardar no histórico';
+      $('#copyReport').disabled = !exportable;
+      $('#downloadReport').disabled = !exportable;
+      const status = $('#previewStatus');
+      status.classList.toggle('invalid', !exportable || output.unknown.length > 0);
+      status.querySelector('span:last-child').textContent = !scan.valid ? 'Cálculo de bagagens incompleto' : output.unknown.length ? 'Modelo contém variável desconhecida' : 'Pronto para exportar';
+      const warning = $('#reportWarning');
+      const warnings = [];
+      if (!scan.valid) warnings.push('Complete ou corrija os intervalos antes de copiar ou descarregar.');
+      if (output.unknown.length) warnings.push('Variáveis desconhecidas mantidas no texto: ' + output.unknown.map(v => '{{' + v + '}}').join(', '));
+      warning.textContent = warnings.join(' ');
+      warning.classList.toggle('show', warnings.length > 0);
+    }
+
+    function formatDate(value) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))) return '';
+      const [year, month, day] = value.split('-');
+      return `${day}/${month}/${year}`;
+    }
+
+    function formatTwoDigits(value) {
+      const parsed = parseIntegerInput(value);
+      return parsed.valid ? String(parsed.value).padStart(2, '0') : '00';
+    }
+
+    function generateReport(scannedTotal = scanResult().total) {
+      const startDate = formatDate(report.dateStart);
+      const isDay = report.shiftType === 'diurno';
+      const values = {
+        data_inicial: startDate,
+        data_final: formatDate(isDay ? report.dateStart : addDaysISO(report.dateStart, 1)),
+        hora_inicial_periodo: isDay ? '09:00' : '19:00',
+        hora_final_periodo: isDay ? '19:00' : '09:00',
+        turno: report.shiftId || '',
+        tipo_turno: report.shiftType === 'diurno' ? 'Diurno' : 'Noturno',
+        numero_voo: String(report.flightNumber || '').toUpperCase(),
+        proveniencia: report.origin || '',
+        hora_aterragem: report.arrivalTime || '',
+        hora_primeira_bagagem: report.firstBagTime || '',
+        hora_inicio_rastreio: report.trackingStart || '',
+        hora_fim_rastreio: report.trackingEnd || '',
+        constrangimentos: report.constraints === '' ? '0' : report.constraints,
+        bagagens_selecionadas: parseIntegerInput(report.selectedBags).valid ? String(Number(report.selectedBags)) : '0',
+        bagagens_scaneadas: String(scannedTotal),
+        paletes: formatTwoDigits(report.pallets),
+        contentores: formatTwoDigits(report.containers),
+        carrinhos: formatTwoDigits(report.carts),
+        transferencias: formatTwoDigits(report.transfers)
+      };
+      const template = report.shiftType === 'diurno' ? enforceDayDateRule(templates.day) : templates.night;
+      const unknown = new Set();
+      const text = template.replace(/{{\s*([^{}]+?)\s*}}/g, (match, name) => {
+        const key = name.trim();
+        if (Object.prototype.hasOwnProperty.call(values, key)) return values[key];
+        unknown.add(key); return match;
+      });
+      return { text, unknown: [...unknown] };
+    }
+
+    function saveReport() { saveJSON(STORAGE.report, report); }
+
+    async function copyReport() {
+      if ($('#copyReport').disabled) return;
+      const text = $('#reportPreview').value;
+      try {
+        if (!navigator.clipboard || !window.isSecureContext) throw new Error('Clipboard indisponível');
+        await navigator.clipboard.writeText(text);
+        showToast('Relatório copiado para a área de transferência.');
+      } catch (error) {
+        const preview = $('#reportPreview');
+        preview.focus(); preview.select();
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch (_) { copied = false; }
+        showToast(copied ? 'Relatório copiado.' : 'O texto foi selecionado. Prima Ctrl+C para o copiar.', !copied);
+      }
+    }
+
+    function downloadReport() {
+      if ($('#downloadReport').disabled) return;
+      const flight = normalizeFlight(report.flightNumber) || 'voo';
+      const date = report.dateStart || 'sem-data';
+      downloadTextFile($('#reportPreview').value, `relatorio-${flight}-${date}.txt`);
+      showToast('Ficheiro de texto preparado.');
+    }
+
+    function downloadTextFile(text, filename) {
+      const blob = new Blob(['\uFEFF' + text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = filename;
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function bindHistory() {
+      $('#historyCutoff').value = addDaysISO(todayISO(), -2);
+      $('#historySelectAll').addEventListener('change', event => {
+        selectedHistoryIds.clear();
+        if (event.target.checked) reportHistory.forEach(item => selectedHistoryIds.add(item.id));
+        renderHistory();
+      });
+      $('#deleteSelectedHistory').addEventListener('click', deleteSelectedHistory);
+      $('#deleteAllHistory').addEventListener('click', deleteAllHistory);
+      $('#deleteBeforeHistory').addEventListener('click', deleteHistoryBeforeDate);
+    }
+
+    function saveCurrentToHistory(options = {}) {
+      const silent = options && options.silent === true;
+      if (!scanResult().valid || !/^\d{4}-\d{2}-\d{2}$/.test(String(report.dateStart || ''))) return false;
+      const now = new Date().toISOString();
+      const data = {
+        reportDate: report.dateStart,
+        shiftType: report.shiftType,
+        shiftId: report.shiftId || '',
+        flightNumber: String(report.flightNumber || '').toUpperCase(),
+        origin: report.origin || '',
+        text: generateReport(scanResult().total).text,
+        updatedAt: now
+      };
+      const existing = reportHistory.find(item => item.id === report.historyId);
+      if (existing) {
+        Object.assign(existing, data);
+      } else {
+        const item = { id: makeId(), createdAt: now, ...data };
+        reportHistory.push(item);
+        report.historyId = item.id;
+      }
+      saveJSON(STORAGE.history, reportHistory);
+      saveReport();
+      renderHistory();
+      updateAll();
+      if (!silent) showToast(existing ? 'Relatório atualizado no histórico.' : 'Relatório guardado no histórico.');
+      return true;
+    }
+
+    function renderHistory() {
+      const rows = $('#historyRows');
+      rows.textContent = '';
+      const validIds = new Set(reportHistory.map(item => item.id));
+      [...selectedHistoryIds].forEach(id => { if (!validIds.has(id)) selectedHistoryIds.delete(id); });
+      const sorted = [...reportHistory].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+
+      sorted.forEach(item => {
+        const row = document.createElement('tr');
+
+        const selectCell = document.createElement('td');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox'; checkbox.className = 'history-check'; checkbox.checked = selectedHistoryIds.has(item.id);
+        checkbox.setAttribute('aria-label', `Selecionar relatório ${item.flightNumber || 'sem número'} de ${formatDate(item.reportDate)}`);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedHistoryIds.add(item.id); else selectedHistoryIds.delete(item.id);
+          updateHistorySelectionUI();
+        });
+        selectCell.append(checkbox);
+
+        const summaryCell = document.createElement('td'); summaryCell.className = 'history-summary';
+        const title = document.createElement('strong'); title.textContent = item.flightNumber || 'Voo sem número';
+        const origin = document.createElement('div'); origin.className = 'history-meta'; origin.textContent = item.origin || 'Proveniência não indicada';
+        const details = document.createElement('details');
+        const summary = document.createElement('summary'); summary.textContent = 'Ver relatório';
+        const text = document.createElement('pre'); text.className = 'history-text'; text.textContent = item.text;
+        details.append(summary, text); summaryCell.append(title, origin, details);
+
+        const dateCell = document.createElement('td');
+        const dateText = document.createElement('strong'); dateText.textContent = formatDate(item.reportDate);
+        const shiftText = document.createElement('div'); shiftText.className = 'history-meta';
+        shiftText.textContent = `${item.shiftType === 'noturno' ? 'Noturno' : 'Diurno'}${item.shiftId ? ' · Turno ' + item.shiftId : ''}`;
+        dateCell.append(dateText, shiftText);
+
+        const savedCell = document.createElement('td'); savedCell.textContent = formatDateTime(item.updatedAt);
+
+        const actions = document.createElement('td'); actions.className = 'row-actions';
+        const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'small-btn'; copy.textContent = 'Copiar';
+        copy.addEventListener('click', () => copyHistoryText(item.text));
+        const download = document.createElement('button'); download.type = 'button'; download.className = 'small-btn'; download.textContent = 'Descarregar';
+        download.addEventListener('click', () => {
+          const flight = normalizeFlight(item.flightNumber) || 'voo';
+          downloadTextFile(item.text, `relatorio-${flight}-${item.reportDate}.txt`);
+          showToast('Relatório do histórico descarregado.');
+        });
+        actions.append(copy, download);
+        row.append(selectCell, summaryCell, dateCell, savedCell, actions);
+        rows.append(row);
+      });
+
+      const count = reportHistory.length;
+      $('#historyTabCount').textContent = String(count);
+      $('#historyTabCount').setAttribute('aria-label', `${count} ${count === 1 ? 'relatório guardado' : 'relatórios guardados'}`);
+      $('#historyCountText').textContent = count === 0 ? 'Nenhum relatório guardado.' : `${count} ${count === 1 ? 'relatório guardado.' : 'relatórios guardados.'}`;
+      $('#historyTable').hidden = count === 0;
+      $('#historyEmpty').hidden = count > 0;
+      $('#deleteAllHistory').disabled = count === 0;
+      updateHistorySelectionUI();
+    }
+
+    function updateHistorySelectionUI() {
+      const count = reportHistory.length;
+      const selectedCount = selectedHistoryIds.size;
+      const selectAll = $('#historySelectAll');
+      selectAll.disabled = count === 0;
+      selectAll.checked = count > 0 && selectedCount === count;
+      selectAll.indeterminate = selectedCount > 0 && selectedCount < count;
+      $('#deleteSelectedHistory').disabled = selectedCount === 0;
+      $('#deleteSelectedHistory').textContent = selectedCount ? `Eliminar selecionados (${selectedCount})` : 'Eliminar selecionados';
+    }
+
+    function deleteSelectedHistory() {
+      const count = selectedHistoryIds.size;
+      if (!count || !confirm(`Eliminar ${count} ${count === 1 ? 'relatório selecionado' : 'relatórios selecionados'}?`)) return;
+      removeHistoryItems(item => selectedHistoryIds.has(item.id), `${count} ${count === 1 ? 'relatório eliminado.' : 'relatórios eliminados.'}`);
+    }
+
+    function deleteAllHistory() {
+      if (!reportHistory.length || !confirm(`Eliminar todos os ${reportHistory.length} relatórios guardados?`)) return;
+      removeHistoryItems(() => true, 'Todos os relatórios foram eliminados.');
+    }
+
+    function deleteHistoryBeforeDate() {
+      const cutoff = $('#historyCutoff').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoff)) {
+        showToast('Indique uma data válida para a eliminação.', true); return;
+      }
+      const count = reportHistory.filter(item => item.reportDate < cutoff).length;
+      if (!count) { showToast('Não existem relatórios anteriores à data indicada.'); return; }
+      if (!confirm(`Eliminar ${count} ${count === 1 ? 'relatório com data anterior' : 'relatórios com data anterior'} a ${formatDate(cutoff)}?`)) return;
+      removeHistoryItems(item => item.reportDate < cutoff, `${count} ${count === 1 ? 'relatório eliminado.' : 'relatórios eliminados.'}`);
+    }
+
+    function removeHistoryItems(predicate, message) {
+      const removed = new Set(reportHistory.filter(predicate).map(item => item.id));
+      reportHistory = reportHistory.filter(item => !removed.has(item.id));
+      removed.forEach(id => selectedHistoryIds.delete(id));
+      if (removed.has(report.historyId)) { report.historyId = ''; saveReport(); }
+      saveJSON(STORAGE.history, reportHistory);
+      renderHistory(); updateAll(); showToast(message);
+    }
+
+    async function copyHistoryText(text) {
+      let copied = false;
+      try {
+        if (!navigator.clipboard || !window.isSecureContext) throw new Error('Clipboard indisponível');
+        await navigator.clipboard.writeText(text); copied = true;
+      } catch (_) {
+        const temporary = document.createElement('textarea');
+        temporary.value = text; temporary.setAttribute('readonly', ''); temporary.style.position = 'fixed'; temporary.style.opacity = '0';
+        document.body.append(temporary); temporary.select();
+        try { copied = document.execCommand('copy'); } catch (_) { copied = false; }
+        temporary.remove();
+      }
+      showToast(copied ? 'Relatório copiado.' : 'Não foi possível copiar o relatório.', !copied);
+    }
+
+    function formatDateTime(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return new Intl.DateTimeFormat('pt-PT', { dateStyle: 'short', timeStyle: 'short' }).format(date);
+    }
+
+    function hasReportData() {
+      const clean = makeDefaultReport();
+      const ignored = new Set(['intervals']);
+      return Object.keys(clean).some(key => !ignored.has(key) && JSON.stringify(report[key]) !== JSON.stringify(clean[key])) ||
+        JSON.stringify(report.intervals.map(({start, end}) => ({start, end}))) !== JSON.stringify(clean.intervals.map(({start, end}) => ({start, end})));
+    }
+
+    function newReport() {
+      const archiveCurrent = hasReportData() && scanResult().valid && /^\d{4}-\d{2}-\d{2}$/.test(String(report.dateStart || ''));
+      const message = archiveCurrent
+        ? 'Criar um novo relatório? O relatório atual será guardado no histórico antes de limpar o formulário.'
+        : 'Criar um novo relatório? Os dados atuais do relatório serão limpos. Os modelos, o histórico e as associações serão preservados.';
+      if (!confirm(message)) return;
+      if (archiveCurrent) saveCurrentToHistory({ silent: true });
+      report = makeDefaultReport();
+      populateReportForm(); renderIntervals(); updateShiftUI(false); updateScanModeUI(); saveReport(); updateAll();
+      showToast(archiveCurrent ? 'Relatório anterior guardado. Novo relatório iniciado.' : 'Novo relatório iniciado.');
+    }
+
+    function clearReportData() {
+      if (hasReportData() && !confirm('Limpar todos os dados do formulário atual? O histórico, os modelos e as associações serão preservados.')) return;
+      report = makeDefaultReport();
+      populateReportForm(); renderIntervals(); updateShiftUI(false); updateScanModeUI(); saveReport(); updateAll();
+      showToast('Dados do formulário limpos.');
+    }
+
+    function bindTemplates() {
+      $('#dayTemplate').addEventListener('input', () => showTemplateWarning('day'));
+      $('#nightTemplate').addEventListener('input', () => showTemplateWarning('night'));
+      $$('.save-template').forEach(button => button.addEventListener('click', () => saveTemplate(button.dataset.model)));
+      $$('.reset-template').forEach(button => button.addEventListener('click', () => resetTemplate(button.dataset.model)));
+    }
+
+    function renderTemplates() {
+      $('#dayTemplate').value = templates.day;
+      $('#nightTemplate').value = templates.night;
+      showTemplateWarning('day'); showTemplateWarning('night');
+    }
+
+    function renderVariables() {
+      const box = $('#variableList');
+      box.textContent = '';
+      VARIABLES.forEach(name => {
+        const code = document.createElement('code'); code.className = 'variable'; code.textContent = '{{' + name + '}}'; box.append(code);
+      });
+    }
+
+    function unknownVariables(text) {
+      const unknown = new Set();
+      String(text).replace(/{{\s*([^{}]+?)\s*}}/g, (_, name) => {
+        const key = name.trim(); if (!VARIABLES.includes(key)) unknown.add(key); return _;
+      });
+      return [...unknown];
+    }
+
+    function showTemplateWarning(model) {
+      const text = model === 'day' ? $('#dayTemplate').value : $('#nightTemplate').value;
+      const unknown = unknownVariables(text);
+      const target = model === 'day' ? $('#dayTemplateWarning') : $('#nightTemplateWarning');
+      target.textContent = unknown.length ? 'Variáveis desconhecidas: ' + unknown.map(item => '{{' + item + '}}').join(', ') : '';
+    }
+
+    function saveTemplate(model) {
+      const input = model === 'day' ? $('#dayTemplate') : $('#nightTemplate');
+      templates[model] = model === 'day' ? enforceDayDateRule(input.value) : input.value;
+      input.value = templates[model];
+      saveJSON(STORAGE.templates, templates); updateAll();
+      showToast(`Modelo ${model === 'day' ? 'Diurno' : 'Noturno'} guardado.`);
+    }
+
+    function resetTemplate(model) {
+      const label = model === 'day' ? 'Diurno' : 'Noturno';
+      if (!confirm(`Restaurar o modelo ${label} para o conteúdo inicial?`)) return;
+      templates[model] = model === 'day' ? DEFAULT_DAY_TEMPLATE : DEFAULT_TEMPLATE;
+      saveJSON(STORAGE.templates, templates); renderTemplates(); updateAll();
+      showToast(`Modelo ${label} restaurado.`);
+    }
+
+    function bindAssociations() {
+      $('#associationForm').addEventListener('submit', saveAssociation);
+      $('#cancelAssociation').addEventListener('click', cancelAssociationEdit);
+    }
+
+    function renderAssociations() {
+      const tbody = $('#associationRows');
+      tbody.textContent = '';
+      const sorted = [...flights].sort((a, b) => a.number.localeCompare(b.number, 'pt'));
+      sorted.forEach(item => {
+        const row = document.createElement('tr');
+        const number = document.createElement('td'); number.className = 'flight-code'; number.textContent = item.number;
+        const origin = document.createElement('td'); origin.textContent = item.origin;
+        const actions = document.createElement('td'); actions.className = 'row-actions';
+        const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'small-btn'; edit.textContent = 'Editar'; edit.addEventListener('click', () => editAssociation(item.id));
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'small-btn delete'; remove.textContent = 'Eliminar'; remove.addEventListener('click', () => deleteAssociation(item.id));
+        actions.append(edit, remove); row.append(number, origin, actions); tbody.append(row);
+      });
+      $('#associationEmpty').hidden = flights.length > 0;
+      $('#associationTable').hidden = flights.length === 0;
+    }
+
+    function saveAssociation(event) {
+      event.preventDefault();
+      const number = $('#associationFlight').value.trim().toUpperCase();
+      const origin = $('#associationOrigin').value.trim();
+      const key = normalizeFlight(number);
+      let valid = true;
+      $('#associationFlightError').textContent = '';
+      $('#associationOriginError').textContent = '';
+      if (!key) { $('#associationFlightError').textContent = 'Introduza um número de voo.'; valid = false; }
+      if (!origin) { $('#associationOriginError').textContent = 'Introduza a proveniência.'; valid = false; }
+      const duplicate = flights.find(item => normalizeFlight(item.number) === key && item.id !== editingFlightId);
+      if (duplicate) { $('#associationFlightError').textContent = `Este voo já está associado a ${duplicate.origin}.`; valid = false; }
+      if (!valid) return;
+
+      if (editingFlightId) {
+        const item = flights.find(flight => flight.id === editingFlightId);
+        if (item) { item.number = number; item.origin = origin; }
+        showToast('Associação atualizada.');
+      } else {
+        flights.push({ id: makeId(), number, origin });
+        showToast('Associação adicionada.');
+      }
+      saveJSON(STORAGE.flights, flights); renderAssociations(); cancelAssociationEdit(); updateAll();
+    }
+
+    function editAssociation(id) {
+      const item = flights.find(flight => flight.id === id);
+      if (!item) return;
+      editingFlightId = id;
+      $('#associationFlight').value = item.number;
+      $('#associationOrigin').value = item.origin;
+      $('#associationFormHeading').textContent = 'Editar associação';
+      $('#associationFormHelp').textContent = 'Atualize os dados do voo selecionado.';
+      $('#saveAssociation').textContent = 'Guardar alterações';
+      $('#cancelAssociation').hidden = false;
+      $('#associationFlight').focus();
+    }
+
+    function cancelAssociationEdit() {
+      editingFlightId = null;
+      $('#associationForm').reset();
+      $('#associationFlightError').textContent = '';
+      $('#associationOriginError').textContent = '';
+      $('#associationFormHeading').textContent = 'Nova associação';
+      $('#associationFormHelp').textContent = 'Adicione um voo à lista.';
+      $('#saveAssociation').textContent = 'Adicionar associação';
+      $('#cancelAssociation').hidden = true;
+    }
+
+    function deleteAssociation(id) {
+      const item = flights.find(flight => flight.id === id);
+      if (!item || !confirm(`Eliminar a associação ${item.number} — ${item.origin}?`)) return;
+      flights = flights.filter(flight => flight.id !== id);
+      if (editingFlightId === id) cancelAssociationEdit();
+      saveJSON(STORAGE.flights, flights); renderAssociations(); updateAll(); showToast('Associação eliminada.');
+    }
+
+    function showToast(message, error = false) {
+      const toast = $('#toast');
+      toast.textContent = message; toast.classList.toggle('error', error); toast.classList.add('show');
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+    }
+
+    init();
+  </script>
+</body>
+</html>
