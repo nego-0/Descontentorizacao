@@ -323,11 +323,11 @@
               </div>
               <div class="field">
                 <label for="dateStart">Data</label>
-                <input id="dateStart" data-bind="dateStart" type="date">
+                <input id="dateStart" data-bind="dateStart" type="date" required>
               </div>
               <div class="field">
                 <label for="shiftId">Turno</label>
-                <input id="shiftId" data-bind="shiftId" type="text" maxlength="20" placeholder="Ex.: B" autocomplete="off">
+                <input id="shiftId" data-bind="shiftId" type="text" maxlength="20" placeholder="Ex.: B" autocomplete="off" required>
               </div>
             </div>
           </section>
@@ -345,24 +345,24 @@
               </div>
               <div class="field autocomplete-field">
                 <label for="origin">Proveniência</label>
-                <input id="origin" data-bind="origin" type="text" placeholder="Ex.: Guangzhou" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="originSuggestions" aria-expanded="false">
+                <input id="origin" data-bind="origin" type="text" placeholder="Ex.: Guangzhou" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="originSuggestions" aria-expanded="false" required>
                 <div id="originSuggestions" class="autocomplete-list" role="listbox" aria-label="Proveniências e voos correspondentes" hidden></div>
               </div>
               <div class="field">
                 <label for="arrivalTime">Hora de chegada/aterragem</label>
-                <div class="input-action"><input id="arrivalTime" data-bind="arrivalTime" type="time"><button class="now-btn" type="button" data-time-now="arrivalTime" aria-label="Definir hora de chegada como a hora atual">Agora</button></div>
+                <div class="input-action"><input id="arrivalTime" data-bind="arrivalTime" type="time" required><button class="now-btn" type="button" data-time-now="arrivalTime" aria-label="Definir hora de chegada como a hora atual">Agora</button></div>
               </div>
               <div class="field">
                 <label for="firstBagTime">Primeira bagagem à descontentorização</label>
-                <div class="input-action"><input id="firstBagTime" data-bind="firstBagTime" type="time"><button class="now-btn" type="button" data-time-now="firstBagTime" aria-label="Definir hora da primeira bagagem como a hora atual">Agora</button></div>
+                <div class="input-action"><input id="firstBagTime" data-bind="firstBagTime" type="time" required><button class="now-btn" type="button" data-time-now="firstBagTime" aria-label="Definir hora da primeira bagagem como a hora atual">Agora</button></div>
               </div>
               <div class="field">
                 <label for="trackingStart">Início do rastreio</label>
-                <div class="input-action"><input id="trackingStart" data-bind="trackingStart" type="time"><button class="now-btn" type="button" data-time-now="trackingStart" aria-label="Definir início do rastreio como a hora atual">Agora</button></div>
+                <div class="input-action"><input id="trackingStart" data-bind="trackingStart" type="time" required><button class="now-btn" type="button" data-time-now="trackingStart" aria-label="Definir início do rastreio como a hora atual">Agora</button></div>
               </div>
               <div class="field">
                 <label for="trackingEnd">Fim do rastreio</label>
-                <div class="input-action"><input id="trackingEnd" data-bind="trackingEnd" type="time"><button class="now-btn" type="button" data-time-now="trackingEnd" aria-label="Definir fim do rastreio como a hora atual">Agora</button></div>
+                <div class="input-action"><input id="trackingEnd" data-bind="trackingEnd" type="time" required><button class="now-btn" type="button" data-time-now="trackingEnd" aria-label="Definir fim do rastreio como a hora atual">Agora</button></div>
               </div>
               <div class="field full">
                 <label for="constraints">Constrangimentos</label>
@@ -1163,32 +1163,124 @@ Transferências: {{transferencias}}`;
       return { total: parsed.valid ? parsed.value : 0, valid: parsed.valid, details: [] };
     }
 
+    function validDateInput(value) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && addDaysISO(value, 0) === value;
+    }
+
+    function clockMinutes(value) {
+      if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(String(value || ''))) return null;
+      const [hours, minutes] = value.split(':').map(Number);
+      return hours * 60 + minutes;
+    }
+
+    function validTimeSequence(values, allowMidnightRollover) {
+      const raw = values.map(clockMinutes);
+      if (raw.some(value => value === null)) return false;
+      const normalized = [raw[0]];
+      let dayOffset = 0;
+      let rollovers = 0;
+      for (let index = 1; index < raw.length; index += 1) {
+        let value = raw[index] + dayOffset;
+        if (value < normalized[index - 1]) {
+          if (!allowMidnightRollover || rollovers === 1) return false;
+          dayOffset += 24 * 60;
+          rollovers += 1;
+          value = raw[index] + dayOffset;
+        }
+        normalized.push(value);
+      }
+      const [arrival, firstBag, trackingStart, trackingEnd] = normalized;
+      return arrival < firstBag && firstBag <= trackingStart && trackingStart < trackingEnd;
+    }
+
+    function validateReport(scan = scanResult()) {
+      const errors = [];
+      const invalidFields = new Set();
+      const requireText = (key, fieldId, label) => {
+        if (String(report[key] || '').trim()) return;
+        errors.push(`Preencha ${label}.`);
+        invalidFields.add(fieldId);
+      };
+
+      requireText('shiftId', 'shiftId', 'o campo Turno');
+      if (!validDateInput(report.dateStart)) {
+        errors.push('Indique uma Data válida.');
+        invalidFields.add('dateStart');
+      }
+      requireText('origin', 'origin', 'a Proveniência');
+
+      const timeFields = [
+        ['arrivalTime', 'Hora de chegada/aterragem'],
+        ['firstBagTime', 'Hora da primeira bagagem'],
+        ['trackingStart', 'Hora de início do rastreio'],
+        ['trackingEnd', 'Hora do fim do rastreio']
+      ];
+      const missingTimes = timeFields.filter(([key]) => clockMinutes(report[key]) === null);
+      if (missingTimes.length) {
+        errors.push('Preencha todas as Horas obrigatórias.');
+        missingTimes.forEach(([key]) => invalidFields.add(key));
+      } else if (!validTimeSequence(timeFields.map(([key]) => report[key]), report.shiftType === 'noturno')) {
+        errors.push('Corrija a ordem das horas: aterragem < primeira bagagem ≤ início do rastreio < fim do rastreio.');
+        timeFields.forEach(([key]) => invalidFields.add(key));
+      }
+
+      if (!scan.valid || scan.total <= 0) {
+        errors.push('Indique um total de Bagagens Scaneadas superior a zero.');
+        if (report.scanMode === 'direct') invalidFields.add('directTotal');
+      }
+
+      const operationalFields = [
+        ['pallets', 'pallets'],
+        ['containers', 'containers'],
+        ['carts', 'carts']
+      ];
+      const hasOperationalUnit = operationalFields.some(([key]) => {
+        const parsed = parseIntegerInput(report[key]);
+        return parsed.valid && parsed.value > 0;
+      });
+      if (!hasOperationalUnit) {
+        errors.push('Indique pelo menos uma unidade operacional em Paletes, Contentores ou Carrinhos.');
+        operationalFields.forEach(([, fieldId]) => invalidFields.add(fieldId));
+      }
+
+      return { valid: errors.length === 0, errors, invalidFields };
+    }
+
+    function applyValidationFeedback(validation) {
+      ['shiftId', 'dateStart', 'origin', 'arrivalTime', 'firstBagTime', 'trackingStart', 'trackingEnd', 'pallets', 'containers', 'carts']
+        .forEach(id => $('#' + id).setAttribute('aria-invalid', String(validation.invalidFields.has(id))));
+      if (report.scanMode === 'direct') {
+        $('#directTotal').setAttribute('aria-invalid', String(validation.invalidFields.has('directTotal')));
+      }
+    }
+
     function updateAll() {
       const scan = scanResult();
+      const validation = validateReport(scan);
       const currentFlight = flights.find(item => normalizeFlight(item.number) === normalizeFlight(report.flightNumber));
       $('#flightMatchHint').textContent = report.flightNumber
         ? (currentFlight ? `Associação encontrada: ${currentFlight.origin}` : 'Voo sem associação; a proveniência pode ser preenchida manualmente.')
         : '';
-      $('#directTotal').setAttribute('aria-invalid', String(report.scanMode === 'direct' && !scan.valid));
-      $('#directTotalError').textContent = report.scanMode === 'direct' && !scan.valid ? 'Introduza um número inteiro igual ou superior a zero.' : '';
+      const scanReady = scan.valid && scan.total > 0;
+      $('#directTotalError').textContent = report.scanMode === 'direct' && !scanReady ? 'Introduza um total superior a zero.' : '';
       $('#scanTotalValue').textContent = scan.valid ? String(scan.total) : 'Incompleto';
-      $('#scanTotal').classList.toggle('incomplete', !scan.valid);
-      $('#scanTotal').querySelector('span').textContent = scan.valid ? (report.scanMode === 'intervals' ? 'Total calculado' : 'Total indicado') : 'Cálculo incompleto';
+      $('#scanTotal').classList.toggle('incomplete', !scanReady);
+      $('#scanTotal').querySelector('span').textContent = scanReady ? (report.scanMode === 'intervals' ? 'Total calculado' : 'Total indicado') : 'Total obrigatório';
+      applyValidationFeedback(validation);
 
       const output = generateReport(scan.total);
       $('#reportPreview').value = output.text;
-      const exportable = scan.valid;
-      const historyReady = exportable && /^\d{4}-\d{2}-\d{2}$/.test(String(report.dateStart || ''));
+      const exportable = validation.valid;
+      const historyReady = exportable;
       $('#saveHistory').disabled = !historyReady;
       $('#saveHistory').textContent = report.historyId && reportHistory.some(item => item.id === report.historyId) ? 'Atualizar no histórico' : 'Guardar no histórico';
       $('#copyReport').disabled = !exportable;
       $('#downloadReport').disabled = !exportable;
       const status = $('#previewStatus');
       status.classList.toggle('invalid', !exportable || output.unknown.length > 0);
-      status.querySelector('span:last-child').textContent = !scan.valid ? 'Cálculo de bagagens incompleto' : output.unknown.length ? 'Modelo contém variável desconhecida' : 'Pronto para exportar';
+      status.querySelector('span:last-child').textContent = !exportable ? 'Relatório incompleto' : output.unknown.length ? 'Modelo contém variável desconhecida' : 'Pronto para exportar';
       const warning = $('#reportWarning');
-      const warnings = [];
-      if (!scan.valid) warnings.push('Complete ou corrija os intervalos antes de copiar ou descarregar.');
+      const warnings = [...validation.errors];
       if (output.unknown.length) warnings.push('Variáveis desconhecidas mantidas no texto: ' + output.unknown.map(v => '{{' + v + '}}').join(', '));
       warning.textContent = warnings.join(' ');
       warning.classList.toggle('show', warnings.length > 0);
@@ -1242,7 +1334,14 @@ Transferências: {{transferencias}}`;
     function saveReport() { saveJSON(STORAGE.report, report); }
 
     async function copyReport() {
-      if ($('#copyReport').disabled) return;
+      const validation = validateReport();
+      if (!validation.valid) {
+        applyValidationFeedback(validation);
+        const firstInvalid = validation.invalidFields.values().next().value;
+        if (firstInvalid) $('#' + firstInvalid)?.focus();
+        showToast('Complete os campos obrigatórios e corrija as horas antes de copiar.', true);
+        return;
+      }
       const text = $('#reportPreview').value;
       try {
         if (!navigator.clipboard || !window.isSecureContext) throw new Error('Clipboard indisponível');
@@ -1258,7 +1357,7 @@ Transferências: {{transferencias}}`;
     }
 
     function downloadReport() {
-      if ($('#downloadReport').disabled) return;
+      if (!validateReport().valid) return;
       const flight = normalizeFlight(report.flightNumber) || 'voo';
       const date = report.dateStart || 'sem-data';
       downloadTextFile($('#reportPreview').value, `relatorio-${flight}-${date}.txt`);
@@ -1288,7 +1387,7 @@ Transferências: {{transferencias}}`;
 
     function saveCurrentToHistory(options = {}) {
       const silent = options && options.silent === true;
-      if (!scanResult().valid || !/^\d{4}-\d{2}-\d{2}$/.test(String(report.dateStart || ''))) return false;
+      if (!validateReport().valid) return false;
       const now = new Date().toISOString();
       const data = {
         reportDate: report.dateStart,
@@ -1446,7 +1545,7 @@ Transferências: {{transferencias}}`;
     }
 
     function newReport() {
-      const archiveCurrent = hasReportData() && scanResult().valid && /^\d{4}-\d{2}-\d{2}$/.test(String(report.dateStart || ''));
+      const archiveCurrent = hasReportData() && validateReport().valid;
       const message = archiveCurrent
         ? 'Criar um novo relatório? O relatório atual será guardado no histórico antes de limpar o formulário.'
         : 'Criar um novo relatório? Os dados atuais do relatório serão limpos. Os modelos, o histórico e as associações serão preservados.';
